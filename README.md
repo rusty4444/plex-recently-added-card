@@ -102,6 +102,8 @@ For best results, set the card to span the full width of a section and give it p
 
 Looking for a cinema-style "Now Showing" display for when Plex is actively playing? Check out [plex-now-showing](https://github.com/rusty4444/plex-now-showing).
 
+Using Kodi instead of Plex? Check out [kodi-recently-added-card](https://github.com/rusty4444/kodi-recently-added-card) and [kodi-now-showing](https://github.com/rusty4444/kodi-now-showing).
+
 ---
 
 ## Credits
