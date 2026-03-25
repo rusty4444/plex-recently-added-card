@@ -313,61 +313,62 @@ class PlexRecentlyAddedCard extends HTMLElement {
   }
 
   async _fetchTrailer(ratingKey) {
+    if (!this._config.tmdb_api_key) return null;
     if (ratingKey in this._trailerCache) {
       return this._trailerCache[ratingKey];
     }
     try {
       const base = this._config.plex_url.replace(/\/$/, '');
       const token = this._config.plex_token;
-      const resp = await fetch(
-        `${base}/library/metadata/${ratingKey}/extras?X-Plex-Token=${token}`,
+
+      // Step 1: Get the movie metadata to find the TMDB ID
+      const metaResp = await fetch(
+        `${base}/library/metadata/${ratingKey}?X-Plex-Token=${token}`,
         { headers: { Accept: 'application/json' } }
       );
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const data = await resp.json();
-      const extras = data.MediaContainer?.Metadata || [];
+      if (!metaResp.ok) throw new Error(`Plex metadata HTTP ${metaResp.status}`);
+      const metaData = await metaResp.json();
+      const item = metaData?.MediaContainer?.Metadata?.[0];
+      if (!item) throw new Error('No metadata found');
 
-      // Find first trailer extra
-      const trailerExtra = extras.find(
-        (e) => e.subtype === 'trailer' || e.extraType === 1
-      );
-
-      let youtubeUrl = null;
-      if (trailerExtra) {
-        // Check Guid array for YouTube ID
-        const guids = trailerExtra.Guid || [];
-        for (const g of guids) {
-          const id = g.id || g;
-          if (typeof id === 'string' && id.startsWith('youtube://')) {
-            const ytId = id.replace('youtube://', '').split('?')[0];
-            youtubeUrl = `https://www.youtube.com/watch?v=${ytId}`;
-            break;
-          }
-        }
-        // Fallback: check the extra's own key/guid string
-        if (!youtubeUrl && trailerExtra.guid) {
-          const ytMatch = trailerExtra.guid.match(/youtube[:\/]+([\w-]{11})/);
-          if (ytMatch) {
-            youtubeUrl = `https://www.youtube.com/watch?v=${ytMatch[1]}`;
-          }
-        }
-        // Fallback: check Media entries for a YouTube URL
-        if (!youtubeUrl) {
-          const mediaItems = trailerExtra.Media || [];
-          for (const m of mediaItems) {
-            const parts = m.Part || [];
-            for (const p of parts) {
-              const ytId = this._getYouTubeId(p.key || '');
-              if (ytId) {
-                youtubeUrl = `https://www.youtube.com/watch?v=${ytId}`;
-                break;
-              }
-            }
-            if (youtubeUrl) break;
-          }
+      // Extract TMDB ID from Guid array
+      let tmdbId = null;
+      const guids = item.Guid || [];
+      for (const g of guids) {
+        const id = g.id || g;
+        if (typeof id === 'string' && id.startsWith('tmdb://')) {
+          tmdbId = id.replace('tmdb://', '').split('?')[0];
+          break;
         }
       }
 
+      if (!tmdbId) {
+        // Fallback: check old-style guid format
+        const oldGuid = item.guid || '';
+        const tmdbMatch = oldGuid.match(/themoviedb[:\/]+([\d]+)/);
+        if (tmdbMatch) tmdbId = tmdbMatch[1];
+      }
+
+      if (!tmdbId) {
+        this._trailerCache[ratingKey] = null;
+        return null;
+      }
+
+      // Step 2: Fetch trailer from TMDB API
+      const tmdbResp = await fetch(
+        `https://api.themoviedb.org/3/movie/${tmdbId}/videos?language=en-US`,
+        { headers: { Accept: 'application/json', Authorization: `Bearer ${this._config.tmdb_api_key}` } }
+      );
+      if (!tmdbResp.ok) throw new Error(`TMDB HTTP ${tmdbResp.status}`);
+      const tmdbData = await tmdbResp.json();
+      const videos = tmdbData.results || [];
+
+      // Find official trailer (prefer official YouTube trailers)
+      const trailer = videos.find(v => v.type === 'Trailer' && v.site === 'YouTube' && v.official) ||
+                      videos.find(v => v.type === 'Trailer' && v.site === 'YouTube') ||
+                      videos.find(v => v.site === 'YouTube');
+
+      const youtubeUrl = trailer ? `https://www.youtube.com/watch?v=${trailer.key}` : null;
       this._trailerCache[ratingKey] = youtubeUrl;
       return youtubeUrl;
     } catch (err) {
