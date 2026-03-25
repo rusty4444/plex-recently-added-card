@@ -104,6 +104,8 @@ Looking for a cinema-style "Now Showing" display for when Plex is actively playi
 
 Using Kodi instead of Plex? Check out [kodi-recently-added-card](https://github.com/rusty4444/kodi-recently-added-card) and [kodi-now-showing](https://github.com/rusty4444/kodi-now-showing).
 
+Using Jellyfin? Check out [jellyfin-recently-added-card](https://github.com/rusty4444/jellyfin-recently-added-card) and [jellyfin-now-showing](https://github.com/rusty4444/jellyfin-now-showing).
+
 ---
 
 ## Credits
