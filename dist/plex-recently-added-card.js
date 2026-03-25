@@ -382,41 +382,16 @@ class PlexRecentlyAddedCard extends HTMLElement {
     const ytId = this._getYouTubeId(url);
     if (!ytId) return;
 
-    // Create overlay on document.body to bypass shadow DOM iframe restrictions
-    const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.92);z-index:99999;display:flex;align-items:center;justify-content:center;cursor:pointer;';
-
-    const wrapper = document.createElement('div');
-    wrapper.style.cssText = 'position:relative;width:90vw;max-width:960px;aspect-ratio:16/9;';
-
-    const iframe = document.createElement('iframe');
-    iframe.src = `https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&rel=0`;
-    iframe.style.cssText = 'width:100%;height:100%;border:none;border-radius:8px;';
-    iframe.setAttribute('allow', 'autoplay; encrypted-media; fullscreen');
-    iframe.setAttribute('allowfullscreen', '');
-
-    const closeBtn = document.createElement('button');
-    closeBtn.textContent = '\u2715';
-    closeBtn.style.cssText = 'position:absolute;top:-16px;right:-16px;width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,0.8);border:1px solid rgba(255,255,255,0.3);color:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:1;';
-
-    wrapper.appendChild(iframe);
-    wrapper.appendChild(closeBtn);
-    overlay.appendChild(wrapper);
-    document.body.appendChild(overlay);
-
-    // Pause cycling
-    if (this._cycleTimer) {
-      clearInterval(this._cycleTimer);
-      this._cycleTimer = null;
-    }
-
-    const close = () => {
-      overlay.remove();
-      this._startCycle();
-    };
-    closeBtn.addEventListener('click', (e) => { e.stopPropagation(); close(); });
-    overlay.addEventListener('click', close);
-    wrapper.addEventListener('click', (e) => e.stopPropagation());
+    // Open YouTube in a popup window sized like a video player
+    const w = Math.min(960, Math.round(window.screen.width * 0.85));
+    const h = Math.round(w * 9 / 16);
+    const left = Math.round((window.screen.width - w) / 2);
+    const top = Math.round((window.screen.height - h) / 2);
+    window.open(
+      `https://www.youtube.com/watch?v=${ytId}`,
+      'trailer',
+      `width=${w},height=${h},left=${left},top=${top},popup=yes,toolbar=no,menubar=no,location=no,status=no`
+    );
   }
 
   _render() {
