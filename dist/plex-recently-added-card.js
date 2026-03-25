@@ -381,28 +381,7 @@ class PlexRecentlyAddedCard extends HTMLElement {
   _playTrailer(url) {
     const ytId = this._getYouTubeId(url);
     if (!ytId) return;
-
-    const root = this.shadowRoot;
-    const container = root.querySelector('.trailer-container');
-    const frame = root.querySelector('#trailerFrame');
-    const closeBtn = root.querySelector('.trailer-close');
-
-    frame.src = `https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0`;
-    container.classList.add('active');
-
-    // Pause cycling while trailer plays
-    if (this._cycleTimer) {
-      clearInterval(this._cycleTimer);
-      this._cycleTimer = null;
-    }
-
-    const close = () => {
-      frame.src = '';
-      container.classList.remove('active');
-      this._startCycle();
-      closeBtn.removeEventListener('click', close);
-    };
-    closeBtn.addEventListener('click', close);
+    window.open(`https://www.youtube.com/watch?v=${ytId}`, '_blank');
   }
 
   _render() {
