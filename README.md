@@ -18,6 +18,7 @@ A custom Home Assistant Lovelace card that shows your recently added movies and 
 - Color-coded dots — gold for movies, blue for TV shows
 - Connects directly to your Plex server (no additional integrations required)
 - Deduplicates TV shows — only shows the most recent entry per series
+- **Trailers** — tap the trailer button on any movie to open its YouTube trailer (requires a free TMDB API key)
 
 ---
 
@@ -55,6 +56,7 @@ movies_count: 5
 shows_count: 5
 cycle_interval: 8
 title: Recently Added
+tmdb_api_key: YOUR_TMDB_READ_ACCESS_TOKEN  # Optional: enables trailer button for movies
 ```
 
 For best results, set the card to span the full width of a section and give it plenty of vertical space (e.g., 8+ grid rows).
@@ -69,6 +71,7 @@ For best results, set the card to span the full width of a section and give it p
 | `shows_count` | number | `5` | Number of recently added TV shows to display |
 | `cycle_interval` | number | `8` | Seconds between cycling to the next item |
 | `title` | string | `"Recently Added"` | Header text (set to empty string to hide) |
+| `tmdb_api_key` | string | Empty (trailers disabled) | TMDB Read Access Token — enables the trailer button on movies |
 
 ### Finding your Plex token
 
@@ -87,6 +90,24 @@ For best results, set the card to span the full width of a section and give it p
 - Deduplicates TV shows so you only see one entry per series (the most recent)
 - Interleaves movies and shows for variety (movie, show, movie, show...)
 - Pre-loads poster and background art for smooth transitions
+
+---
+
+## Trailers
+
+Tap the **Trailer** button on any movie to open its YouTube trailer in a new tab. This feature requires a free TMDB (The Movie Database) API key.
+
+The card fetches the TMDB ID from Plex's movie metadata (the `Guid` array), then uses it to look up trailers via the TMDB API.
+
+### How to get a TMDB Read Access Token
+
+1. Create a free account at [themoviedb.org](https://www.themoviedb.org/signup)
+2. Go to [Settings → API](https://www.themoviedb.org/settings/api)
+3. Request an API key (select "Developer" and fill in basic info — any values work for personal use)
+4. Once approved, copy the **Read Access Token** (the long string starting with `eyJ...`) — not the shorter API Key
+5. Add it to your card config as `tmdb_api_key`
+
+The card uses TMDB to look up movie trailers by matching the media's TMDB ID. Trailer results are cached so each movie is only looked up once.
 
 ---
 
