@@ -12,6 +12,7 @@ class PlexRecentlyAddedCard extends HTMLElement {
     this._currentIndex = 0;
     this._cycleTimer = null;
     this._config = {};
+    this._trailerCache = {};
   }
 
   setConfig(config) {
@@ -130,6 +131,8 @@ class PlexRecentlyAddedCard extends HTMLElement {
         thumb: item.thumb || '',
         art: item.art || '',
         addedAt: item.addedAt || 0,
+        ratingKey: item.ratingKey || null,
+        trailerUrl: null,
       }));
 
       // Map TV shows to display items
@@ -269,6 +272,136 @@ class PlexRecentlyAddedCard extends HTMLElement {
       else timeStr = `${Math.round(diff / 86400)}d ago`;
       timeEl.textContent = timeStr;
     }
+
+    // Trailer button — show for movies only; lazy-fetch trailer URL
+    const trailerBtn = root.querySelector('.trailer-btn');
+    if (trailerBtn) {
+      // Hide by default while we determine availability
+      trailerBtn.classList.remove('visible');
+      trailerBtn.onclick = null;
+
+      if (item.type === 'movie' && item.ratingKey) {
+        if (item.trailerUrl) {
+          // Already fetched and found
+          trailerBtn.classList.add('visible');
+          trailerBtn.onclick = (e) => {
+            e.stopPropagation();
+            this._playTrailer(item.trailerUrl);
+          };
+        } else if (item.trailerUrl === null) {
+          // Not yet fetched — kick off fetch
+          this._fetchTrailer(item.ratingKey).then((url) => {
+            item.trailerUrl = url || undefined; // undefined = fetched, not found
+            if (url && this._items[this._currentIndex] === item) {
+              trailerBtn.classList.add('visible');
+              trailerBtn.onclick = (e) => {
+                e.stopPropagation();
+                this._playTrailer(url);
+              };
+            }
+          });
+        }
+        // if trailerUrl === undefined, fetch was done and nothing found — leave hidden
+      }
+    }
+  }
+
+  _getYouTubeId(url) {
+    if (!url) return null;
+    const match = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/|youtube\.com\/v\/)([-\w]{11})/);
+    return match ? match[1] : null;
+  }
+
+  async _fetchTrailer(ratingKey) {
+    if (ratingKey in this._trailerCache) {
+      return this._trailerCache[ratingKey];
+    }
+    try {
+      const base = this._config.plex_url.replace(/\/$/, '');
+      const token = this._config.plex_token;
+      const resp = await fetch(
+        `${base}/library/metadata/${ratingKey}/extras?X-Plex-Token=${token}`,
+        { headers: { Accept: 'application/json' } }
+      );
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      const extras = data.MediaContainer?.Metadata || [];
+
+      // Find first trailer extra
+      const trailerExtra = extras.find(
+        (e) => e.subtype === 'trailer' || e.extraType === 1
+      );
+
+      let youtubeUrl = null;
+      if (trailerExtra) {
+        // Check Guid array for YouTube ID
+        const guids = trailerExtra.Guid || [];
+        for (const g of guids) {
+          const id = g.id || g;
+          if (typeof id === 'string' && id.startsWith('youtube://')) {
+            const ytId = id.replace('youtube://', '').split('?')[0];
+            youtubeUrl = `https://www.youtube.com/watch?v=${ytId}`;
+            break;
+          }
+        }
+        // Fallback: check the extra's own key/guid string
+        if (!youtubeUrl && trailerExtra.guid) {
+          const ytMatch = trailerExtra.guid.match(/youtube[:\/]+([\w-]{11})/);
+          if (ytMatch) {
+            youtubeUrl = `https://www.youtube.com/watch?v=${ytMatch[1]}`;
+          }
+        }
+        // Fallback: check Media entries for a YouTube URL
+        if (!youtubeUrl) {
+          const mediaItems = trailerExtra.Media || [];
+          for (const m of mediaItems) {
+            const parts = m.Part || [];
+            for (const p of parts) {
+              const ytId = this._getYouTubeId(p.key || '');
+              if (ytId) {
+                youtubeUrl = `https://www.youtube.com/watch?v=${ytId}`;
+                break;
+              }
+            }
+            if (youtubeUrl) break;
+          }
+        }
+      }
+
+      this._trailerCache[ratingKey] = youtubeUrl;
+      return youtubeUrl;
+    } catch (err) {
+      console.warn('Plex Recently Added Card: Trailer fetch error', err);
+      this._trailerCache[ratingKey] = null;
+      return null;
+    }
+  }
+
+  _playTrailer(url) {
+    const ytId = this._getYouTubeId(url);
+    if (!ytId) return;
+
+    const root = this.shadowRoot;
+    const container = root.querySelector('.trailer-container');
+    const frame = root.querySelector('#trailerFrame');
+    const closeBtn = root.querySelector('.trailer-close');
+
+    frame.src = `https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0`;
+    container.classList.add('active');
+
+    // Pause cycling while trailer plays
+    if (this._cycleTimer) {
+      clearInterval(this._cycleTimer);
+      this._cycleTimer = null;
+    }
+
+    const close = () => {
+      frame.src = '';
+      container.classList.remove('active');
+      this._startCycle();
+      closeBtn.removeEventListener('click', close);
+    };
+    closeBtn.addEventListener('click', close);
   }
 
   _render() {
@@ -547,6 +680,87 @@ class PlexRecentlyAddedCard extends HTMLElement {
           border-radius: 3px;
         }
 
+        /* Trailer button */
+        .trailer-btn {
+          display: none;
+          align-items: center;
+          gap: 6px;
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          color: #ddd;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          font-size: 12px;
+          font-weight: 600;
+          letter-spacing: 0.05em;
+          text-transform: uppercase;
+          padding: 6px 14px;
+          border-radius: 4px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .trailer-btn:hover {
+          background: rgba(255, 255, 255, 0.2);
+          color: #fff;
+        }
+
+        .trailer-btn.visible {
+          display: inline-flex;
+        }
+
+        .trailer-btn svg {
+          width: 14px;
+          height: 14px;
+          fill: currentColor;
+        }
+
+        /* Trailer embed overlay */
+        .trailer-container {
+          display: none;
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          z-index: 10;
+          background: #000;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .trailer-container.active {
+          display: flex;
+        }
+
+        .trailer-container iframe {
+          width: 100%;
+          height: 100%;
+          border: none;
+        }
+
+        .trailer-close {
+          position: absolute;
+          top: 8px;
+          right: 8px;
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: rgba(0, 0, 0, 0.7);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          color: #fff;
+          font-size: 18px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 11;
+          transition: background 0.2s;
+        }
+
+        .trailer-close:hover {
+          background: rgba(255, 255, 255, 0.2);
+        }
+
         /* Error */
         .error-msg {
           display: none;
@@ -598,7 +812,16 @@ class PlexRecentlyAddedCard extends HTMLElement {
                   <span class="time-ago"></span>
                 </div>
                 <div class="item-summary"></div>
+                <button class="trailer-btn" id="trailerBtn">
+                  <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                  Trailer
+                </button>
               </div>
+            </div>
+
+            <div class="trailer-container" id="trailerContainer">
+              <button class="trailer-close" id="trailerClose">&#x2715;</button>
+              <iframe id="trailerFrame" allow="autoplay; encrypted-media" allowfullscreen></iframe>
             </div>
 
             <div class="dots"></div>
