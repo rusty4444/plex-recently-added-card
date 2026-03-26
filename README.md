@@ -136,6 +136,10 @@ The card uses TMDB to look up movie trailers by matching the media's TMDB ID. Tr
 - **Card not appearing after install**: Clear your browser cache, or append `?v=2` to the resource URL in Settings → Dashboards → Resources
 - **No items showing**: Double-check your `plex_url` and `plex_token` — the card connects directly to Plex, not through HA. Make sure the Plex URL is reachable from the device viewing the dashboard.
 - **CORS errors in browser console**: If your Plex server is on a different host, you may need to allow CORS in Plex settings or access the dashboard via the same network.
+- **Card blank when HA is served over HTTPS**: If you access HA via HTTPS (Nabu Casa, nginx reverse proxy, etc.), your browser will block HTTP requests to Plex (mixed content). Use Plex's built-in HTTPS URL instead — Plex provides valid certificates via `.plex.direct` domains. To find yours:
+  1. Go to `https://plex.tv/api/resources?X-Plex-Token=YOUR_TOKEN`
+  2. Find your server's `.plex.direct` URL in the connections list (e.g., `https://192-168-1-100.xxxxxxxxxx.plex.direct:32400`)
+  3. Use that as your `plex_url` in the card config
 
 ---
 
