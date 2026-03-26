@@ -381,17 +381,7 @@ class PlexRecentlyAddedCard extends HTMLElement {
   _playTrailer(url) {
     const ytId = this._getYouTubeId(url);
     if (!ytId) return;
-
-    // Open YouTube in a popup window sized like a video player
-    const w = Math.min(960, Math.round(window.screen.width * 0.85));
-    const h = Math.round(w * 9 / 16);
-    const left = Math.round((window.screen.width - w) / 2);
-    const top = Math.round((window.screen.height - h) / 2);
-    window.open(
-      `https://www.youtube.com/watch?v=${ytId}`,
-      'trailer',
-      `width=${w},height=${h},left=${left},top=${top},popup=yes,toolbar=no,menubar=no,location=no,status=no`
-    );
+    window.open(`https://www.youtube.com/watch?v=${ytId}`, '_blank');
   }
 
   _render() {
