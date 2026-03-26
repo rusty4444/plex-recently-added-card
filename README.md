@@ -127,6 +127,8 @@ Using Kodi instead of Plex? Check out [kodi-recently-added-card](https://github.
 
 Using Jellyfin? Check out [jellyfin-recently-added-card](https://github.com/rusty4444/jellyfin-recently-added-card) and [jellyfin-now-showing](https://github.com/rusty4444/jellyfin-now-showing).
 
+Using Emby? Check out [emby-now-showing](https://github.com/rusty4444/emby-now-showing) and [emby-recently-added-card](https://github.com/rusty4444/emby-recently-added-card).
+
 ---
 
 ## Credits
