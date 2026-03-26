@@ -132,3 +132,5 @@ Using Jellyfin? Check out [jellyfin-recently-added-card](https://github.com/rust
 ## Credits
 
 Built by Sam Russell — AI used in development.
+
+YouTube trailer embedding approach adapted from [ha-youtubevideocard](https://github.com/loryanstrant/ha-youtubevideocard) by [loryanstrant](https://github.com/loryanstrant).

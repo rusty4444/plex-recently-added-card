@@ -381,7 +381,78 @@ class PlexRecentlyAddedCard extends HTMLElement {
   _playTrailer(url) {
     const ytId = this._getYouTubeId(url);
     if (!ytId) return;
-    window.open(`https://www.youtube.com/watch?v=${ytId}`, '_blank');
+
+    // Pause cycling
+    if (this._cycleTimer) {
+      clearInterval(this._cycleTimer);
+      this._cycleTimer = null;
+    }
+
+    // Create fullscreen overlay on document.body
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.92);z-index:99999;display:flex;align-items:center;justify-content:center;cursor:pointer;';
+
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'position:relative;width:90vw;max-width:960px;aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden;';
+
+    const playerDiv = document.createElement('div');
+    playerDiv.id = 'yt-trailer-player-' + Date.now();
+    playerDiv.style.cssText = 'width:100%;height:100%;';
+    wrapper.appendChild(playerDiv);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '\u2715';
+    closeBtn.style.cssText = 'position:absolute;top:8px;right:8px;width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,0.7);border:1px solid rgba(255,255,255,0.3);color:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:100001;';
+    wrapper.appendChild(closeBtn);
+
+    overlay.appendChild(wrapper);
+    document.body.appendChild(overlay);
+
+    const self = this;
+    const close = () => {
+      if (self._ytPlayer) { try { self._ytPlayer.destroy(); } catch(e) {} self._ytPlayer = null; }
+      overlay.remove();
+      self._startCycle();
+    };
+    closeBtn.addEventListener('click', (e) => { e.stopPropagation(); close(); });
+    overlay.addEventListener('click', close);
+    wrapper.addEventListener('click', (e) => e.stopPropagation());
+
+    // Load YouTube IFrame API and create player
+    const initPlayer = () => {
+      self._ytPlayer = new YT.Player(playerDiv.id, {
+        width: '100%',
+        height: '100%',
+        videoId: ytId,
+        playerVars: {
+          autoplay: 1,
+          controls: 1,
+          modestbranding: 1,
+          rel: 0,
+          playsinline: 1,
+          enablejsapi: 1,
+          origin: window.location.origin
+        }
+      });
+    };
+
+    if (window.YT && window.YT.Player) {
+      initPlayer();
+    } else {
+      // Load the YouTube IFrame API script
+      if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+        const tag = document.createElement('script');
+        tag.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(tag);
+      }
+      const check = setInterval(() => {
+        if (window.YT && window.YT.Player) {
+          clearInterval(check);
+          initPlayer();
+        }
+      }, 100);
+      setTimeout(() => clearInterval(check), 10000);
+    }
   }
 
   _render() {
