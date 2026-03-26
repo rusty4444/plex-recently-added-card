@@ -18,6 +18,7 @@ A custom Home Assistant Lovelace card that shows your recently added movies and 
 - Color-coded dots — gold for movies, blue for TV shows
 - Connects directly to your Plex server (no additional integrations required)
 - Deduplicates TV shows — only shows the most recent entry per series
+- **Visual editor** — configure the card through a graphical UI, no YAML required
 - **Trailers** — tap the trailer button on movies and TV shows to watch YouTube trailers (requires a free TMDB API key)
 
 ---
@@ -41,6 +42,18 @@ The Lovelace resource will be registered automatically.
 4. Click **Add Resource**
 5. URL: `/local/plex-recently-added-card.js`
 6. Type: **JavaScript Module**
+
+---
+
+## Visual Editor
+
+The card includes a built-in visual editor. When you add or edit the card, you'll see a graphical form instead of raw YAML.
+
+<p align="center">
+  <img src="screenshots/visual-editor.jpg" alt="Visual Editor" width="500">
+</p>
+
+You can still use YAML if you prefer — click "Show code editor" at the bottom of the editor.
 
 ---
 

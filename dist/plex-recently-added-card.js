@@ -985,6 +985,75 @@ class PlexRecentlyAddedCard extends HTMLElement {
     };
   }
 
+  static getConfigForm() {
+    return {
+      schema: [
+        {
+          name: 'plex_url',
+          required: true,
+          selector: { text: {} },
+        },
+        {
+          name: 'plex_token',
+          required: true,
+          selector: { text: { type: 'password' } },
+        },
+        {
+          type: 'grid',
+          name: '',
+          schema: [
+            {
+              name: 'movies_count',
+              selector: { number: { min: 1, max: 20, mode: 'box' } },
+            },
+            {
+              name: 'shows_count',
+              selector: { number: { min: 1, max: 20, mode: 'box' } },
+            },
+          ],
+        },
+        {
+          type: 'grid',
+          name: '',
+          schema: [
+            {
+              name: 'cycle_interval',
+              selector: { number: { min: 3, max: 60, mode: 'box', unit_of_measurement: 'seconds' } },
+            },
+            {
+              name: 'title',
+              selector: { text: {} },
+            },
+          ],
+        },
+        {
+          name: 'tmdb_api_key',
+          selector: { text: { type: 'password' } },
+        },
+      ],
+      computeLabel: (schema) => {
+        const labels = {
+          plex_url: 'Plex Server URL',
+          plex_token: 'Plex Token',
+          movies_count: 'Number of Movies',
+          shows_count: 'Number of TV Shows',
+          cycle_interval: 'Cycle Interval',
+          title: 'Card Title',
+          tmdb_api_key: 'TMDB API Key (for trailers)',
+        };
+        return labels[schema.name] || schema.name;
+      },
+      computeHelper: (schema) => {
+        const helpers = {
+          plex_url: 'e.g. http://192.168.1.100:32400',
+          plex_token: 'Find in Plex → Settings → XML URL',
+          tmdb_api_key: 'Optional — enables trailer button. Get a free key at themoviedb.org',
+        };
+        return helpers[schema.name] || undefined;
+      },
+    };
+  }
+
   disconnectedCallback() {
     if (this._cycleTimer) {
       clearInterval(this._cycleTimer);
