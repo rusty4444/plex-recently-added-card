@@ -154,6 +154,9 @@ class PlexRecentlyAddedCard extends HTMLElement {
           thumb: isEpisode ? (item.grandparentThumb || item.thumb || '') : (item.thumb || ''),
           art: isEpisode ? (item.grandparentArt || item.art || '') : (item.art || ''),
           addedAt: item.addedAt || 0,
+          seriesRatingKey: isEpisode ? (item.grandparentRatingKey || null) : (item.ratingKey || null),
+          seasonNumber: isEpisode ? (item.parentIndex || null) : null,
+          trailerUrl: null,
         };
       });
 
@@ -273,35 +276,35 @@ class PlexRecentlyAddedCard extends HTMLElement {
       timeEl.textContent = timeStr;
     }
 
-    // Trailer button — show for movies only; lazy-fetch trailer URL
+    // Trailer button — show for movies and TV shows; lazy-fetch trailer URL
     const trailerBtn = root.querySelector('.trailer-btn');
     if (trailerBtn) {
-      // Hide by default while we determine availability
       trailerBtn.classList.remove('visible');
       trailerBtn.onclick = null;
 
-      if (item.type === 'movie' && item.ratingKey) {
-        if (item.trailerUrl) {
-          // Already fetched and found
+      const showTrailerBtn = (url) => {
+        if (url && this._items[this._currentIndex] === item) {
           trailerBtn.classList.add('visible');
-          trailerBtn.onclick = (e) => {
-            e.stopPropagation();
-            this._playTrailer(item.trailerUrl);
-          };
-        } else if (item.trailerUrl === null) {
-          // Not yet fetched — kick off fetch
-          this._fetchTrailer(item.ratingKey).then((url) => {
-            item.trailerUrl = url || undefined; // undefined = fetched, not found
-            if (url && this._items[this._currentIndex] === item) {
-              trailerBtn.classList.add('visible');
-              trailerBtn.onclick = (e) => {
-                e.stopPropagation();
-                this._playTrailer(url);
-              };
-            }
+          trailerBtn.onclick = (e) => { e.stopPropagation(); this._playTrailer(url); };
+        }
+      };
+
+      if (item.trailerUrl) {
+        showTrailerBtn(item.trailerUrl);
+      } else if (item.trailerUrl === null) {
+        // Not yet fetched — determine fetch method
+        let fetchPromise;
+        if (item.type === 'movie' && item.ratingKey) {
+          fetchPromise = this._fetchTrailer(item.ratingKey);
+        } else if (item.type === 'tv' && item.seriesRatingKey) {
+          fetchPromise = this._fetchTvTrailer(item.seriesRatingKey, item.seasonNumber);
+        }
+        if (fetchPromise) {
+          fetchPromise.then((url) => {
+            item.trailerUrl = url || undefined;
+            showTrailerBtn(url);
           });
         }
-        // if trailerUrl === undefined, fetch was done and nothing found — leave hidden
       }
     }
   }
@@ -374,6 +377,87 @@ class PlexRecentlyAddedCard extends HTMLElement {
     } catch (err) {
       console.warn('Plex Recently Added Card: Trailer fetch error', err);
       this._trailerCache[ratingKey] = null;
+      return null;
+    }
+  }
+
+  async _fetchTvTrailer(seriesRatingKey, seasonNumber) {
+    const cacheKey = `tv_${seriesRatingKey}_${seasonNumber}`;
+    if (cacheKey in this._trailerCache) return this._trailerCache[cacheKey];
+    if (!this._config.tmdb_api_key) return null;
+
+    try {
+      const base = this._config.plex_url.replace(/\/$/, '');
+      const token = this._config.plex_token;
+      const tmdbToken = this._config.tmdb_api_key;
+
+      // Step 1: Get the series metadata to find the TMDB ID
+      const metaResp = await fetch(
+        `${base}/library/metadata/${seriesRatingKey}?X-Plex-Token=${token}`,
+        { headers: { Accept: 'application/json' } }
+      );
+      if (!metaResp.ok) throw new Error(`Plex metadata HTTP ${metaResp.status}`);
+      const metaData = await metaResp.json();
+      const series = metaData?.MediaContainer?.Metadata?.[0];
+      if (!series) throw new Error('No series metadata found');
+
+      // Extract TMDB ID from Guid array
+      let tmdbId = null;
+      const guids = series.Guid || [];
+      for (const g of guids) {
+        const id = g.id || g;
+        if (typeof id === 'string' && id.startsWith('tmdb://')) {
+          tmdbId = id.replace('tmdb://', '').split('?')[0];
+          break;
+        }
+      }
+      if (!tmdbId) {
+        const oldGuid = series.guid || '';
+        const tmdbMatch = oldGuid.match(/themoviedb[:\/]+([\d]+)/);
+        if (tmdbMatch) tmdbId = tmdbMatch[1];
+      }
+      if (!tmdbId) { this._trailerCache[cacheKey] = null; return null; }
+
+      // Step 2: Try season-specific trailer first
+      let youtubeUrl = null;
+      if (seasonNumber) {
+        try {
+          const seasonResp = await fetch(
+            `https://api.themoviedb.org/3/tv/${tmdbId}/season/${seasonNumber}/videos?language=en-US`,
+            { headers: { Accept: 'application/json', Authorization: `Bearer ${tmdbToken}` } }
+          );
+          if (seasonResp.ok) {
+            const seasonData = await seasonResp.json();
+            const vids = seasonData.results || [];
+            const trailer = vids.find(v => v.type === 'Trailer' && v.site === 'YouTube' && v.official) ||
+                            vids.find(v => v.type === 'Trailer' && v.site === 'YouTube') ||
+                            vids.find(v => v.site === 'YouTube');
+            if (trailer) youtubeUrl = `https://www.youtube.com/watch?v=${trailer.key}`;
+          }
+        } catch (e) { /* fall through to series-level */ }
+      }
+
+      // Step 3: Fall back to series-level trailer
+      if (!youtubeUrl) {
+        const seriesResp = await fetch(
+          `https://api.themoviedb.org/3/tv/${tmdbId}/videos?language=en-US`,
+          { headers: { Accept: 'application/json', Authorization: `Bearer ${tmdbToken}` } }
+        );
+        if (seriesResp.ok) {
+          const seriesData = await seriesResp.json();
+          const vids = seriesData.results || [];
+          const trailer = vids.find(v => v.type === 'Trailer' && v.site === 'YouTube' && v.official) ||
+                          vids.find(v => v.type === 'Trailer' && v.site === 'YouTube') ||
+                          vids.find(v => v.site === 'YouTube');
+          if (trailer) youtubeUrl = `https://www.youtube.com/watch?v=${trailer.key}`;
+        }
+      }
+
+      this._trailerCache[cacheKey] = youtubeUrl;
+      return youtubeUrl;
+    } catch (err) {
+      console.warn('Plex Recently Added Card: TV trailer fetch error', err);
+      this._trailerCache[cacheKey] = null;
       return null;
     }
   }
@@ -540,11 +624,12 @@ class PlexRecentlyAddedCard extends HTMLElement {
         .header {
           display: flex;
           align-items: center;
-          justify-content: space-between;
+          gap: 10px;
           margin-bottom: 14px;
         }
 
         .header-title {
+          flex: 1;
           display: flex;
           align-items: center;
           gap: 8px;
@@ -735,19 +820,22 @@ class PlexRecentlyAddedCard extends HTMLElement {
         .trailer-btn {
           display: none;
           align-items: center;
+          justify-content: center;
           gap: 6px;
           background: rgba(255, 255, 255, 0.1);
           border: 1px solid rgba(255, 255, 255, 0.2);
           color: #ddd;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          font-size: 12px;
+          font-size: 13px;
           font-weight: 600;
-          letter-spacing: 0.05em;
+          letter-spacing: 0.08em;
           text-transform: uppercase;
-          padding: 6px 14px;
-          border-radius: 4px;
+          padding: 8px 16px;
+          border-radius: 6px;
           cursor: pointer;
           transition: all 0.2s ease;
+          min-width: 100px;
+          min-height: 38px;
         }
 
         .trailer-btn:hover {
@@ -760,8 +848,8 @@ class PlexRecentlyAddedCard extends HTMLElement {
         }
 
         .trailer-btn svg {
-          width: 14px;
-          height: 14px;
+          width: 16px;
+          height: 16px;
           fill: currentColor;
         }
 
@@ -843,6 +931,10 @@ class PlexRecentlyAddedCard extends HTMLElement {
                 <img class="plex-logo" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='148 70 216 372'%3E%3Cpath fill='%23e5a00d' d='M256 70H148l108 186-108 186h108l108-186z'/%3E%3C/svg%3E" alt="Plex">
                 ${title}
               </span>
+              <button class="trailer-btn" id="trailerBtn">
+                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                Trailer
+              </button>
               <span class="counter"></span>
             </div>
             ` : ''}
@@ -863,10 +955,6 @@ class PlexRecentlyAddedCard extends HTMLElement {
                   <span class="time-ago"></span>
                 </div>
                 <div class="item-summary"></div>
-                <button class="trailer-btn" id="trailerBtn">
-                  <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                  Trailer
-                </button>
               </div>
             </div>
 
