@@ -29,6 +29,13 @@ class PlexRecentlyAddedCard extends HTMLElement {
       ...config,
     };
 
+    // Apply fixed-height class if fill_height is disabled
+    if (this._config.fill_height === false) {
+      this.classList.add('fixed-height');
+    } else {
+      this.classList.remove('fixed-height');
+    }
+
     this._render();
     this._fetchData();
   }
@@ -567,6 +574,24 @@ class PlexRecentlyAddedCard extends HTMLElement {
           border: 1px solid var(--card-border) !important;
         }
 
+        :host(.fixed-height) {
+          height: auto;
+        }
+
+        :host(.fixed-height) ha-card {
+          height: auto;
+          min-height: 300px;
+        }
+
+        :host(.fixed-height) .card {
+          position: relative;
+          min-height: 300px;
+        }
+
+        :host(.fixed-height) .content {
+          min-height: 300px;
+        }
+
         .card {
           position: absolute;
           top: 0;
@@ -982,6 +1007,7 @@ class PlexRecentlyAddedCard extends HTMLElement {
       shows_count: 5,
       cycle_interval: 8,
       title: 'Recently Added',
+      fill_height: true,
     };
   }
 
@@ -1030,6 +1056,10 @@ class PlexRecentlyAddedCard extends HTMLElement {
           name: 'tmdb_api_key',
           selector: { text: { type: 'password' } },
         },
+        {
+          name: 'fill_height',
+          selector: { boolean: {} },
+        },
       ],
       computeLabel: (schema) => {
         const labels = {
@@ -1040,6 +1070,7 @@ class PlexRecentlyAddedCard extends HTMLElement {
           cycle_interval: 'Cycle Interval',
           title: 'Card Title',
           tmdb_api_key: 'TMDB API Key (for trailers)',
+          fill_height: 'Fill Container Height',
         };
         return labels[schema.name] || schema.name;
       },
@@ -1048,6 +1079,7 @@ class PlexRecentlyAddedCard extends HTMLElement {
           plex_url: 'e.g. http://192.168.1.100:32400',
           plex_token: 'Find in Plex → Settings → XML URL',
           tmdb_api_key: 'Optional — enables trailer button. Get a free key at themoviedb.org',
+          fill_height: 'Enable if your card has proper height. Disable if the card appears collapsed/too short.',
         };
         return helpers[schema.name] || undefined;
       },
