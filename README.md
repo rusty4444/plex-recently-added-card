@@ -59,7 +59,9 @@ You can still use YAML if you prefer — click "Show code editor" at the bottom 
 
 ## Configuration
 
-Add a **Manual card** to your dashboard with this YAML:
+Search for the card by name in the **Add Card** dialog — you can configure everything using the visual editor.
+
+Or add a **Manual card** with this YAML:
 
 ```yaml
 type: custom:plex-recently-added-card
