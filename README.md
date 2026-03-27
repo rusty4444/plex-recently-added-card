@@ -85,6 +85,8 @@ For best results, set the card to span the full width of a section and give it p
 | `cycle_interval` | number | `8` | Seconds between cycling to the next item |
 | `title` | string | `"Recently Added"` | Header text (set to empty string to hide) |
 | `tmdb_api_key` | string | Empty (trailers disabled) | TMDB Read Access Token — enables the trailer button on movies |
+| `fill_height` | boolean | `true` | When enabled, card stretches to fill its container. Disable if the card appears collapsed |
+| `card_height` | number | `300` | Card height in pixels (only used when `fill_height` is `false`) |
 
 ### Finding your Plex token
 
