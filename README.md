@@ -145,6 +145,12 @@ The card uses TMDB to look up movie trailers by matching the media's TMDB ID. Tr
 
 ---
 
+## Known Issues
+
+- **Geo-restricted trailers**: Some trailers may show "Video unavailable — The uploader has not made this video available in your country." This is a YouTube/TMDB restriction and cannot be fixed by the card.
+
+---
+
 ## Related
 
 Looking for a cinema-style "Now Showing" display for when Plex is actively playing? Check out [plex-now-showing](https://github.com/rusty4444/plex-now-showing).
