@@ -1,5 +1,11 @@
 # Plex Recently Added Card
 
+> **⚠️ This card has been superseded by [recently-added-media-card](https://github.com/rusty4444/recently-added-media-card)** — a unified card that supports Plex, Kodi, Jellyfin, and Emby in one package, with inline trailer playback, themed accents, swipe navigation, and a full visual editor. This repo will remain available but will not receive new features.
+
+---
+
+
+
 A custom Home Assistant Lovelace card that shows your recently added movies and TV shows from Plex. Auto-cycles through items with poster art, blurred background, synopsis, ratings, and color-coded indicators.
 
 [![HACS](https://img.shields.io/badge/HACS-Custom-blue)](https://github.com/hacs/integration)
