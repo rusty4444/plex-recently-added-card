@@ -1,5 +1,13 @@
 # Plex Recently Added Card
 
+<p align="center">
+  <a href="https://buymeacoffee.com/rusty4" target="_blank">
+    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50">
+  </a>
+</p>
+
+
+
 > **⚠️ This card has been superseded by [recently-added-media-card](https://github.com/rusty4444/recently-added-media-card)** — a unified card that supports Plex, Kodi, Jellyfin, and Emby in one package, with inline trailer playback, themed accents, swipe navigation, and a full visual editor. This repo will remain available but will not receive new features.
 
 ---
